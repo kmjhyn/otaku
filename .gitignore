@@ -1,0 +1,13 @@
+
+# local secrets
+.env
+.env.*
+!.env.example
+
+# local runtime data/backups
+otaku_data.tmp
+__pycache__/
+*.pyc
+.DS_Store
+otaku_data.json
+web/assets/status/originals_backup/
