@@ -35,7 +35,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -133,7 +134,8 @@ button {
 }
 
 .field input,
-.field select {
+.field select,
+.memo-editor textarea {
   min-height: 46px;
   width: 100%;
   border: 1px solid var(--line);
@@ -628,7 +630,7 @@ button {
   }
 }
 
-button, input, select, .group-card, .modal, .sheet-wrap {
+button, input, select, textarea, .group-card, .modal, .sheet-wrap {
   border-width: 2px;
 }
 
@@ -677,4 +679,85 @@ button, input, select, .group-card, .modal, .sheet-wrap {
 
 .confirm-actions {
   justify-content: center;
+}
+
+.memo-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.memo-head,
+.memo-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.memo-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.memo-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.memo-add {
+  min-width: 28px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.memo-add:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: 0.42;
+}
+
+.memo-editor {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.memo-editor textarea {
+  min-height: 86px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.memo-editor-actions {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.memo-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.memo-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.memo-item p,
+.memo-empty {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.memo-empty {
+  margin-top: 10px;
 }

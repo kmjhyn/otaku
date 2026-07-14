@@ -433,9 +433,13 @@ function bindSuggestionActions(root = document) {
 function renderDetailModal(content) {
   const blankUsers = state.groupDetail.members.filter((member) => (content.statuses[member.id] || "blank") === "blank");
   const mySuggestion = content.suggestions?.[state.user.id] || "";
+  const memos = content.memos || [];
+  const myMemo = memos.find((memo) => memo.userId === state.user.id);
   const isOwner = content.createdBy === state.user.id;
   const isEditing = Boolean(state.modal.editing);
+  const isEditingMemo = Boolean(state.modal.editingMemo);
   const draftTitle = state.modal.title ?? content.title;
+  const draftMemo = state.modal.memo ?? myMemo?.text ?? "";
   return `
     <div class="modal-backdrop">
       <div class="modal">
@@ -469,6 +473,35 @@ function renderDetailModal(content) {
               </div>
             </div>
           ` : ""}
+          <section class="memo-section">
+            <div class="memo-head">
+              <h3>한마디</h3>
+              <div class="memo-actions">
+                ${myMemo ? `<button type="button" class="link-button" data-action="start-edit-memo">수정</button>` : ""}
+                <button type="button" class="link-button memo-add" data-action="start-add-memo" ${myMemo ? "disabled" : ""}>＋</button>
+              </div>
+            </div>
+            ${isEditingMemo ? `
+              <div class="memo-editor">
+                <textarea maxlength="160" rows="3" data-action="memo-input" autofocus>${esc(draftMemo)}</textarea>
+                <div class="memo-editor-actions">
+                  <span>${draftMemo.length}/160</span>
+                  <button type="button" class="link-button" data-action="cancel-memo">취소</button>
+                  <button type="button" class="button" data-action="save-memo">저장</button>
+                </div>
+              </div>
+            ` : ""}
+            ${memos.length ? `
+              <div class="memo-list">
+                ${memos.map((memo) => `
+                  <article class="memo-item">
+                    <strong>${esc(memo.nickname)}</strong>
+                    <p>${esc(memo.text)}</p>
+                  </article>
+                `).join("")}
+              </div>
+            ` : !isEditingMemo ? `<p class="memo-empty">아직 한마디가 없어요.</p>` : ""}
+          </section>
         </div>
       </div>
     </div>
@@ -547,6 +580,14 @@ function bindActions() {
     if (action === "edit-title-input") {
       node.addEventListener("input", () => {
         state.modal.title = node.value;
+      });
+      return;
+    }
+    if (action === "memo-input") {
+      node.addEventListener("input", () => {
+        state.modal.memo = node.value;
+        const counter = document.querySelector(".memo-editor-actions span");
+        if (counter) counter.textContent = `${node.value.length}/160`;
       });
       return;
     }
@@ -691,6 +732,35 @@ async function handleAction(event) {
       const content = state.groupDetail.contents.find((item) => item.id === contentId);
       state.modal = { type: "detail", content };
       setNotice("징기스칸 선택을 저장했어요.");
+    } catch (error) {
+      setError(error.message);
+    }
+  }
+  if (action === "start-add-memo") {
+    state.modal = { ...state.modal, editingMemo: true, memo: "" };
+    render();
+  }
+  if (action === "start-edit-memo") {
+    const myMemo = state.modal.content.memos?.find((memo) => memo.userId === state.user.id);
+    state.modal = { ...state.modal, editingMemo: true, memo: myMemo?.text || "" };
+    render();
+  }
+  if (action === "cancel-memo") {
+    state.modal = { ...state.modal, editingMemo: false, memo: "" };
+    render();
+  }
+  if (action === "save-memo") {
+    try {
+      const contentId = state.modal.content.id;
+      await api("/api/content/update-memo", {
+        groupId: state.groupDetail.group.id,
+        contentId,
+        memo: state.modal.memo || "",
+      });
+      await openGroup(state.groupDetail.group.id, false);
+      const content = state.groupDetail.contents.find((item) => item.id === contentId);
+      state.modal = { type: "detail", content, editingMemo: false, memo: "" };
+      setNotice("한마디를 저장했어요.");
     } catch (error) {
       setError(error.message);
     }

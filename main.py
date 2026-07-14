@@ -32,6 +32,7 @@ STATUS_EMOJI = {
 }
 
 SUGGESTION_VALUES = {"", "yes", "no"}
+MEMO_MAX_LENGTH = 160
 
 
 def now_ms():
@@ -327,6 +328,21 @@ class OtakuHandler(SimpleHTTPRequestHandler):
                 suggestions.pop(user["id"], None)
             return self.group_detail(data, user, group_id)
 
+        if path == "/api/content/update-memo":
+            content_id = payload.get("contentId", "")
+            group_id = payload.get("groupId", "")
+            memo = payload.get("memo", "").strip()
+            group = data["groups"].get(group_id)
+            content = data["contents"].get(content_id)
+            if not group or user["id"] not in group["members"] or not content:
+                raise ValueError("이 콘텐츠를 수정할 수 없어요.")
+            if not memo:
+                raise ValueError("한마디를 입력해 주세요.")
+            if len(memo) > MEMO_MAX_LENGTH:
+                raise ValueError(f"한마디는 {MEMO_MAX_LENGTH}자 이하로 입력해 주세요.")
+            content.setdefault("memos", {}).setdefault(group_id, {})[user["id"]] = memo
+            return self.group_detail(data, user, group_id)
+
         if path == "/api/content/rename":
             content_id = payload.get("contentId", "")
             group_id = payload.get("groupId", "")
@@ -358,6 +374,7 @@ class OtakuHandler(SimpleHTTPRequestHandler):
                 raise ValueError("추가한 사람만 삭제할 수 있어요.")
             content.get("entries", {}).pop(group_id, None)
             content.get("suggestions", {}).pop(group_id, None)
+            content.get("memos", {}).pop(group_id, None)
             data["notifications"] = [
                 note for note in data["notifications"]
                 if not (note.get("groupId") == group_id and note.get("contentId") == content_id)
@@ -426,6 +443,7 @@ class OtakuHandler(SimpleHTTPRequestHandler):
             if not group_entries:
                 continue
             group_suggestions = content.get("suggestions", {}).get(group_id, {})
+            group_memos = content.get("memos", {}).get(group_id, {})
             created_by = data["users"].get(content["createdBy"], {"nickname": "알 수 없음"})
             contents.append({
                 "id": content["id"],
@@ -435,6 +453,15 @@ class OtakuHandler(SimpleHTTPRequestHandler):
                 "createdByNickname": created_by["nickname"],
                 "statuses": {member["id"]: group_entries.get(member["id"], "blank") for member in members},
                 "suggestions": {member["id"]: group_suggestions.get(member["id"], "") for member in members},
+                "memos": [
+                    {
+                        "userId": member["id"],
+                        "nickname": member["nickname"],
+                        "text": group_memos.get(member["id"], ""),
+                    }
+                    for member in members
+                    if group_memos.get(member["id"], "")
+                ],
                 "suggestionCount": sum(1 for member in members if group_suggestions.get(member["id"]) == "yes"),
             })
         contents.sort(key=lambda item: item["title"].casefold())
