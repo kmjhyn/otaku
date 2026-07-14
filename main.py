@@ -160,6 +160,14 @@ class OtakuHandler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         print(f"[otaku] {self.address_string()} - {fmt % args}")
 
+    def end_headers(self):
+        static_path = urlparse(self.path).path
+        if static_path == "/" or static_path.endswith((".html", ".js", ".css")):
+            self.send_header("Cache-Control", "no-store, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
+        super().end_headers()
+
     def send_json(self, payload, status=200):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
