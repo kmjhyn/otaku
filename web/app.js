@@ -14,6 +14,8 @@ let state = {
   activeGroup: null,
   groupDetail: null,
   tab: 0,
+  groupView: "list",
+  activeVennMemberId: "",
   modal: null,
   error: "",
   notice: "",
@@ -204,41 +206,195 @@ function renderGroup() {
   if (!state.groupDetail) return `<div class="empty-state">그룹을 불러오는 중...</div>`;
   const tabNames = ["점령성공!", "다음 점령지", "신대륙"];
   const rows = filteredRows(state.groupDetail.contents, state.groupDetail.members, state.tab);
+  const isVenn = state.groupView === "venn";
   return `
     <div class="toolbar">
       <div>
         <h2 class="brand-title">${esc(state.groupDetail.group.name)}</h2>
         <p class="brand-subtitle">공유 코드 ${esc(state.groupDetail.group.code)}</p>
       </div>
+      <button class="button secondary view-toggle" data-action="toggle-group-view" title="${isVenn ? "리스트 보기" : "밴다이어그램 보기"}">
+        ${isVenn ? renderListIcon() : renderVennIcon(state.groupDetail.members.length)}
+      </button>
     </div>
-    <div class="sheet-tabs">
-      ${tabNames.map((name, index) => `
-        <button class="${state.tab === index ? "active" : ""}" data-action="tab" data-tab="${index}">${name}</button>
-      `).join("")}
-    </div>
-    <section class="swipe-region" data-action="swipe">
-      <div class="sheet-wrap">
-        <table class="sheet" style="min-width: ${210 + state.groupDetail.members.length * 34}px">
-          <colgroup>
-            <col class="title-col">
-            ${state.groupDetail.members.map(() => `<col class="user-col">`).join("")}
-          </colgroup>
-          <thead>
-            <tr>
-              <th class="content-col">제목</th>
-              ${state.groupDetail.members.map((member) => `
-                <th class="${member.id === state.user.id ? "current-user-cell" : ""}">${esc(member.nickname)}</th>
-              `).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.length ? rows.map((content) => renderContentRow(content)).join("") : `
-              <tr><td colspan="${state.groupDetail.members.length + 1}">아직 이 페이지에 표시할 콘텐츠가 없어요.</td></tr>
-            `}
-          </tbody>
-        </table>
+    ${isVenn ? renderVennView(state.groupDetail.contents, state.groupDetail.members) : `
+      <div class="sheet-tabs">
+        ${tabNames.map((name, index) => `
+          <button class="${state.tab === index ? "active" : ""}" data-action="tab" data-tab="${index}">${name}</button>
+        `).join("")}
       </div>
+      <section class="swipe-region" data-action="swipe">
+        <div class="sheet-wrap">
+          <table class="sheet" style="min-width: ${210 + state.groupDetail.members.length * 34}px">
+            <colgroup>
+              <col class="title-col">
+              ${state.groupDetail.members.map(() => `<col class="user-col">`).join("")}
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="content-col">제목</th>
+                ${state.groupDetail.members.map((member) => `
+                  <th class="${member.id === state.user.id ? "current-user-cell" : ""}">${esc(member.nickname)}</th>
+                `).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.length ? rows.map((content) => renderContentRow(content)).join("") : `
+                <tr><td colspan="${state.groupDetail.members.length + 1}">아직 이 페이지에 표시할 콘텐츠가 없어요.</td></tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    `}
+  `;
+}
+
+function renderVennIcon(count) {
+  const circleCount = Math.max(1, Math.min(count || 3, 5));
+  return `
+    <span class="venn-icon" aria-hidden="true">
+      ${Array.from({ length: circleCount }, (_, index) => `<span style="${vennIconCircleStyle(index, circleCount)}"></span>`).join("")}
+    </span>
+  `;
+}
+
+function vennIconCircleStyle(index, count) {
+  const centerX = 14;
+  const centerY = 14;
+  const radius = count <= 3 ? 6 : 8;
+  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
+  const x = centerX + Math.cos(angle) * radius;
+  const y = centerY + Math.sin(angle) * radius;
+  return `left:${x}px;top:${y}px;`;
+}
+
+function renderListIcon() {
+  return `
+    <span class="list-icon" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </span>
+  `;
+}
+
+function renderVennView(contents, members) {
+  const model = buildVennModel(contents, members);
+  if (!members.length) return `<div class="empty-state">아직 멤버가 없어요.</div>`;
+  return `
+    <section class="venn-panel">
+      <div class="venn-stage" style="--member-count:${members.length}">
+        ${members.map((member, index) => renderVennCircle(member, index, members.length, model.watchCounts.get(member.id) || 0, model.maxWatchCount)).join("")}
+        ${renderVennRegionLabels(model)}
+      </div>
+      ${model.unwatched.length ? `
+        <div class="outside-region">
+          ${model.unwatched.map((content) => renderVennChip(content)).join("")}
+        </div>
+      ` : ""}
     </section>
+  `;
+}
+
+function renderVennCircle(member, index, count, watchedCount, maxWatchCount) {
+  const position = vennCirclePosition(index, count);
+  const scale = maxWatchCount ? 0.72 + (watchedCount / maxWatchCount) * 0.34 : 0.78;
+  const isActive = state.activeVennMemberId === member.id;
+  const colorIndex = index % vennPalette.length;
+  return `
+    <button
+      class="venn-circle venn-color-${colorIndex} ${isActive ? "active" : ""}"
+      data-action="select-venn-member"
+      data-user-id="${esc(member.id)}"
+      style="--x:${position.x}%;--y:${position.y}%;--scale:${scale};"
+      title="${esc(member.nickname)}"
+    >
+      <span>${esc(member.nickname)}</span>
+      <strong>${watchedCount}</strong>
+    </button>
+  `;
+}
+
+const vennPalette = ["sage", "clay", "blue", "lavender", "gold"];
+
+function vennCirclePosition(index, count) {
+  if (count === 1) return { x: 50, y: 48 };
+  if (count === 2) return [{ x: 39, y: 48 }, { x: 61, y: 48 }][index];
+  if (count === 3) return [{ x: 50, y: 36 }, { x: 39, y: 58 }, { x: 61, y: 58 }][index];
+  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
+  return {
+    x: 50 + Math.cos(angle) * 18,
+    y: 50 + Math.sin(angle) * 18,
+  };
+}
+
+function buildVennModel(contents, members) {
+  const watchCounts = new Map(members.map((member) => [member.id, 0]));
+  const groups = new Map();
+  const unwatched = [];
+
+  contents.forEach((content) => {
+    const watchedIds = members
+      .filter((member) => (content.statuses[member.id] || "blank") === "watched")
+      .map((member) => member.id);
+    watchedIds.forEach((id) => watchCounts.set(id, (watchCounts.get(id) || 0) + 1));
+    if (!watchedIds.length) {
+      unwatched.push(content);
+      return;
+    }
+    const key = watchedIds.sort().join("|");
+    groups.set(key, [...(groups.get(key) || []), content]);
+  });
+
+  groups.forEach((items, key) => groups.set(key, sortVennContents(items)));
+  return {
+    groups,
+    unwatched: sortVennContents(unwatched),
+    watchCounts,
+    maxWatchCount: Math.max(0, ...watchCounts.values()),
+  };
+}
+
+function sortVennContents(contents) {
+  return [...contents].sort((a, b) => {
+    const suggestionDelta = Number(Boolean(b.suggestionCount)) - Number(Boolean(a.suggestionCount));
+    return suggestionDelta || a.title.localeCompare(b.title, "ko");
+  });
+}
+
+function renderVennRegionLabels(model) {
+  const members = state.groupDetail.members;
+  const selectedMemberId = state.activeVennMemberId || members[0]?.id || "";
+  return Array.from(model.groups.entries()).map(([key, items]) => {
+    const ids = key.split("|");
+    if (!ids.includes(selectedMemberId)) return "";
+    const position = vennRegionPosition(ids, members);
+    return `
+      <div class="venn-label-stack" style="--x:${position.x}%;--y:${position.y}%;">
+        ${items.map((content) => renderVennChip(content)).join("")}
+      </div>
+    `;
+  }).join("");
+}
+
+function vennRegionPosition(ids, members) {
+  const positions = ids
+    .map((id) => members.findIndex((member) => member.id === id))
+    .filter((index) => index >= 0)
+    .map((index) => vennCirclePosition(index, members.length));
+  if (!positions.length) return { x: 50, y: 50 };
+  const average = positions.reduce((acc, item) => ({ x: acc.x + item.x, y: acc.y + item.y }), { x: 0, y: 0 });
+  return {
+    x: average.x / positions.length,
+    y: average.y / positions.length,
+  };
+}
+
+function renderVennChip(content) {
+  return `
+    <button class="venn-chip ${content.suggestionCount ? "suggested" : ""}" data-action="content-detail" data-content-id="${esc(content.id)}">
+      ${content.suggestionCount ? `<span>!</span>` : ""}
+      ${esc(content.shortTitle)}
+    </button>
   `;
 }
 
@@ -618,12 +774,14 @@ async function handleAction(event) {
   const action = target.dataset.action;
   if (action === "logout") {
     localStorage.removeItem("otakuUser");
-    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, modal: null };
+    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", activeVennMemberId: "", modal: null };
     render();
   }
   if (action === "home") {
     state.view = "home";
     state.groupDetail = null;
+    state.groupView = "list";
+    state.activeVennMemberId = "";
     render();
   }
   if (action === "open-add") {
@@ -664,6 +822,15 @@ async function handleAction(event) {
   }
   if (action === "tab") {
     state.tab = Number(target.dataset.tab);
+    render();
+  }
+  if (action === "toggle-group-view") {
+    state.groupView = state.groupView === "venn" ? "list" : "venn";
+    state.activeVennMemberId = state.groupDetail?.members?.[0]?.id || "";
+    render();
+  }
+  if (action === "select-venn-member") {
+    state.activeVennMemberId = target.dataset.userId;
     render();
   }
   if (action === "content-detail") {
