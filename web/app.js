@@ -281,8 +281,8 @@ function sortUpsetRows(contents, members) {
   return [...contents].sort((a, b) => {
     const aRank = newWorldRank(a, members);
     const bRank = newWorldRank(b, members);
-    return bRank.watched - aRank.watched
-      || bRank.watching - aRank.watching
+    return bRank.active - aRank.active
+      || bRank.watched - aRank.watched
       || b.suggestionCount - a.suggestionCount
       || a.title.localeCompare(b.title, "ko");
   });
