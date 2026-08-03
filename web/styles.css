@@ -657,7 +657,7 @@ button {
   width: 10px;
   height: 10px;
   object-fit: contain;
-  transform: scaleX(-1);
+  transform: scaleY(-1);
 }
 
 .sheet-wrap {
