@@ -54,10 +54,11 @@ async function refresh() {
     state.app = await api("/api/state");
     state.user = state.app.user;
     localStorage.setItem("otakuUser", JSON.stringify(state.user));
-  } catch {
+  } catch (error) {
     localStorage.removeItem("otakuUser");
     state.user = null;
     state.app = null;
+    state.error = error.message;
   }
   render();
 }
@@ -285,12 +286,8 @@ function renderVennView(contents, members) {
       <div class="venn-stage" style="--member-count:${members.length}">
         ${members.map((member, index) => renderVennCircle(member, index, members.length, model.watchCounts.get(member.id) || 0, model.maxWatchCount)).join("")}
         ${renderVennRegionLabels(model)}
+        ${renderUnwatchedVennLabels(model)}
       </div>
-      ${model.unwatched.length ? `
-        <div class="outside-region">
-          ${model.unwatched.map((content) => renderVennChip(content)).join("")}
-        </div>
-      ` : ""}
     </section>
   `;
 }
@@ -370,7 +367,27 @@ function renderVennRegionLabels(model) {
     const position = vennRegionPosition(ids, members);
     return `
       <div class="venn-label-stack" style="--x:${position.x}%;--y:${position.y}%;">
-        ${items.map((content) => renderVennChip(content)).join("")}
+        ${renderVennPreview(items)}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderUnwatchedVennLabels(model) {
+  const members = state.groupDetail.members;
+  const byCreator = new Map();
+  model.unwatched.forEach((content) => {
+    const creatorId = members.some((member) => member.id === content.createdBy) ? content.createdBy : members[0]?.id;
+    if (!creatorId) return;
+    byCreator.set(creatorId, [...(byCreator.get(creatorId) || []), content]);
+  });
+
+  return Array.from(byCreator.entries()).map(([creatorId, items]) => {
+    const memberIndex = members.findIndex((member) => member.id === creatorId);
+    const position = unwatchedRegionPosition(memberIndex, members.length);
+    return `
+      <div class="venn-label-stack unwatched-stack" style="--x:${position.x}%;--y:${position.y}%;">
+        ${renderVennPreview(items)}
       </div>
     `;
   }).join("");
@@ -387,6 +404,26 @@ function vennRegionPosition(ids, members) {
     x: average.x / positions.length,
     y: average.y / positions.length,
   };
+}
+
+function unwatchedRegionPosition(memberIndex, count) {
+  if (count === 1) return { x: 50, y: 78 };
+  if (count === 2) return [{ x: 22, y: 50 }, { x: 78, y: 50 }][Math.max(memberIndex, 0)];
+  if (count === 3) return [{ x: 50, y: 16 }, { x: 22, y: 76 }, { x: 78, y: 76 }][Math.max(memberIndex, 0)];
+  const anchor = vennCirclePosition(Math.max(memberIndex, 0), count);
+  return {
+    x: 50 + (anchor.x - 50) * 2.12,
+    y: 50 + (anchor.y - 50) * 2.12,
+  };
+}
+
+function renderVennPreview(items) {
+  const visible = items.slice(0, 2);
+  const hiddenCount = Math.max(0, items.length - visible.length);
+  return `
+    ${visible.map((content) => renderVennChip(content)).join("")}
+    ${hiddenCount ? `<span class="venn-more">+${hiddenCount}</span>` : ""}
+  `;
 }
 
 function renderVennChip(content) {
