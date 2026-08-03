@@ -537,27 +537,40 @@ button {
   background: rgba(221, 210, 171, 0.42);
 }
 
-.venn-label-stack {
+.venn-connector {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.venn-connector path {
+  fill: none;
+  stroke: rgba(17, 17, 17, 0.62);
+  stroke-width: 0.32;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.venn-callout {
   position: absolute;
   left: var(--x);
   top: var(--y);
-  z-index: 4;
-  width: min(180px, 34vw);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
+  z-index: 5;
+  width: min(190px, 24vw);
+  display: grid;
+  gap: 5px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
-.venn-label-stack.unwatched-stack {
-  z-index: 5;
+.venn-callout.unwatched {
+  z-index: 6;
 }
 
 .venn-chip {
+  width: 100%;
   min-height: 28px;
-  max-width: 172px;
   border: 2px solid rgba(17, 17, 17, 0.84);
   border-radius: 3px;
   padding: 4px 8px;
@@ -569,10 +582,13 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
   pointer-events: auto;
 }
 
-.venn-more {
+.venn-more,
+.venn-collapse {
+  width: 100%;
   min-height: 26px;
   border: 2px solid rgba(17, 17, 17, 0.62);
   border-radius: 3px;
@@ -582,11 +598,19 @@ button {
   font-size: 12px;
   font-weight: 900;
   line-height: 1.2;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.venn-collapse {
+  min-height: 22px;
+  padding: 0 7px 2px;
 }
 
 .venn-chip.suggested {
-  background: #111;
-  color: #fff;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  box-shadow: inset 4px 0 0 #111;
 }
 
 .venn-chip span {
@@ -821,9 +845,8 @@ button {
     width: clamp(180px, 62vw, 270px);
   }
 
-  .venn-label-stack {
-    width: min(160px, 48vw);
-    max-height: 150px;
+  .venn-callout {
+    width: min(150px, 40vw);
   }
 }
 

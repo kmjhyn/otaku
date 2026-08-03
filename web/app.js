@@ -16,6 +16,7 @@ let state = {
   tab: 0,
   groupView: "list",
   activeVennMemberId: "",
+  expandedVennGroups: {},
   modal: null,
   error: "",
   notice: "",
@@ -285,8 +286,7 @@ function renderVennView(contents, members) {
     <section class="venn-panel">
       <div class="venn-stage" style="--member-count:${members.length}">
         ${members.map((member, index) => renderVennCircle(member, index, members.length, model.watchCounts.get(member.id) || 0, model.maxWatchCount)).join("")}
-        ${renderVennRegionLabels(model)}
-        ${renderUnwatchedVennLabels(model)}
+        ${renderVennCallouts(model)}
       </div>
     </section>
   `;
@@ -358,39 +358,27 @@ function sortVennContents(contents) {
   });
 }
 
-function renderVennRegionLabels(model) {
+function renderVennCallouts(model) {
   const members = state.groupDetail.members;
   const selectedMemberId = state.activeVennMemberId || members[0]?.id || "";
-  return Array.from(model.groups.entries()).map(([key, items]) => {
+  const watchedCallouts = Array.from(model.groups.entries()).map(([key, items]) => {
     const ids = key.split("|");
     if (!ids.includes(selectedMemberId)) return "";
-    const position = vennRegionPosition(ids, members);
-    return `
-      <div class="venn-label-stack" style="--x:${position.x}%;--y:${position.y}%;">
-        ${renderVennPreview(items)}
-      </div>
-    `;
+    return renderVennCallout(`watched:${key}`, items, vennRegionPosition(ids, members), vennCalloutPosition(ids, members), "");
   }).join("");
-}
 
-function renderUnwatchedVennLabels(model) {
-  const members = state.groupDetail.members;
-  const byCreator = new Map();
-  model.unwatched.forEach((content) => {
-    const creatorId = members.some((member) => member.id === content.createdBy) ? content.createdBy : members[0]?.id;
-    if (!creatorId) return;
-    byCreator.set(creatorId, [...(byCreator.get(creatorId) || []), content]);
-  });
-
-  return Array.from(byCreator.entries()).map(([creatorId, items]) => {
-    const memberIndex = members.findIndex((member) => member.id === creatorId);
-    const position = unwatchedRegionPosition(memberIndex, members.length);
-    return `
-      <div class="venn-label-stack unwatched-stack" style="--x:${position.x}%;--y:${position.y}%;">
-        ${renderVennPreview(items)}
-      </div>
-    `;
-  }).join("");
+  const addedUnwatched = model.unwatched.filter((content) => content.createdBy === selectedMemberId);
+  const selectedIndex = members.findIndex((member) => member.id === selectedMemberId);
+  const unwatchedCallout = addedUnwatched.length
+    ? renderVennCallout(
+      `unwatched:${selectedMemberId}`,
+      addedUnwatched,
+      unwatchedRegionPosition(selectedIndex, members.length),
+      unwatchedCalloutPosition(selectedIndex, members.length),
+      "unwatched"
+    )
+    : "";
+  return `${watchedCallouts}${unwatchedCallout}`;
 }
 
 function vennRegionPosition(ids, members) {
@@ -417,12 +405,51 @@ function unwatchedRegionPosition(memberIndex, count) {
   };
 }
 
-function renderVennPreview(items) {
-  const visible = items.slice(0, 2);
+function vennCalloutPosition(ids, members) {
+  const indexes = ids.map((id) => members.findIndex((member) => member.id === id)).filter((index) => index >= 0);
+  if (members.length === 1) return { x: 74, y: 24 };
+  if (members.length === 2) return indexes.includes(0) && indexes.includes(1) ? { x: 50, y: 18 } : unwatchedCalloutPosition(indexes[0], 2);
+  if (members.length === 3) {
+    if (indexes.length === 3) return { x: 76, y: 32 };
+    if (indexes.length === 1) return [{ x: 51, y: 13 }, { x: 19, y: 80 }, { x: 81, y: 80 }][indexes[0]];
+    if (indexes.includes(0) && indexes.includes(1)) return { x: 27, y: 34 };
+    if (indexes.includes(0) && indexes.includes(2)) return { x: 73, y: 35 };
+    return { x: 50, y: 84 };
+  }
+  const anchor = vennRegionPosition(ids, members);
+  return {
+    x: Math.max(16, Math.min(84, 50 + (anchor.x - 50) * 1.55)),
+    y: Math.max(14, Math.min(86, 50 + (anchor.y - 50) * 1.55)),
+  };
+}
+
+function unwatchedCalloutPosition(memberIndex, count) {
+  if (count === 1) return { x: 50, y: 88 };
+  if (count === 2) return [{ x: 17, y: 70 }, { x: 83, y: 70 }][Math.max(memberIndex, 0)];
+  if (count === 3) return [{ x: 50, y: 10 }, { x: 18, y: 88 }, { x: 82, y: 88 }][Math.max(memberIndex, 0)];
+  return unwatchedRegionPosition(memberIndex, count);
+}
+
+function renderVennCallout(key, items, anchor, box, variant) {
+  const expanded = Boolean(state.expandedVennGroups[key]);
+  const visible = expanded ? items : items.slice(0, Math.min(2, items.length));
   const hiddenCount = Math.max(0, items.length - visible.length);
   return `
-    ${visible.map((content) => renderVennChip(content)).join("")}
-    ${hiddenCount ? `<span class="venn-more">+${hiddenCount}</span>` : ""}
+    ${renderVennConnector(anchor, box)}
+    <div class="venn-callout ${variant}" style="--x:${box.x}%;--y:${box.y}%;">
+      ${visible.map((content) => renderVennChip(content)).join("")}
+      ${!expanded && hiddenCount ? `<button class="venn-more" data-action="toggle-venn-list" data-venn-key="${esc(key)}">+${hiddenCount}</button>` : ""}
+      ${expanded && items.length > 2 ? `<button class="venn-collapse" data-action="toggle-venn-list" data-venn-key="${esc(key)}">^</button>` : ""}
+    </div>
+  `;
+}
+
+function renderVennConnector(anchor, box) {
+  const midX = (anchor.x + box.x) / 2;
+  return `
+    <svg class="venn-connector" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M ${anchor.x} ${anchor.y} L ${midX} ${anchor.y} L ${midX} ${box.y} L ${box.x} ${box.y}"></path>
+    </svg>
   `;
 }
 
@@ -811,7 +838,7 @@ async function handleAction(event) {
   const action = target.dataset.action;
   if (action === "logout") {
     localStorage.removeItem("otakuUser");
-    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", activeVennMemberId: "", modal: null };
+    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", activeVennMemberId: "", expandedVennGroups: {}, modal: null };
     render();
   }
   if (action === "home") {
@@ -819,6 +846,7 @@ async function handleAction(event) {
     state.groupDetail = null;
     state.groupView = "list";
     state.activeVennMemberId = "";
+    state.expandedVennGroups = {};
     render();
   }
   if (action === "open-add") {
@@ -864,10 +892,20 @@ async function handleAction(event) {
   if (action === "toggle-group-view") {
     state.groupView = state.groupView === "venn" ? "list" : "venn";
     state.activeVennMemberId = state.groupDetail?.members?.[0]?.id || "";
+    state.expandedVennGroups = {};
     render();
   }
   if (action === "select-venn-member") {
     state.activeVennMemberId = target.dataset.userId;
+    state.expandedVennGroups = {};
+    render();
+  }
+  if (action === "toggle-venn-list") {
+    const key = target.dataset.vennKey;
+    state.expandedVennGroups = {
+      ...state.expandedVennGroups,
+      [key]: !state.expandedVennGroups[key],
+    };
     render();
   }
   if (action === "content-detail") {
