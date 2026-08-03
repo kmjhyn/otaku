@@ -299,7 +299,7 @@ function renderUpsetRow(content, members) {
         style="grid-column: 2 / span ${members.length}; --member-count:${members.length};"
       >
         <span class="upset-links" aria-hidden="true">${renderUpsetLinks(watchedIndexes)}</span>
-        ${members.map((member) => renderUpsetStatus(content.statuses[member.id] || "blank", content.suggestions?.[member.id] === "yes", member)).join("")}
+        ${members.map((member) => renderUpsetStatus(content, member)).join("")}
       </div>
     </div>
   `;
@@ -313,12 +313,20 @@ function renderUpsetLinks(watchedIndexes) {
     .join("");
 }
 
-function renderUpsetStatus(status, isRecommended, member) {
+function renderUpsetStatus(content, member) {
+  const status = content.statuses[member.id] || "blank";
+  const isRecommended = content.suggestions?.[member.id] === "yes";
   const title = isRecommended ? `${member.nickname}님이 추천` : statusLabel(status);
-  return `
-    <span class="upset-dot status-${esc(status)} ${isRecommended ? "recommended" : ""}" title="${esc(title)}">
+  const dot = `
+    <span class="upset-dot-inner status-${esc(status)} ${isRecommended ? "recommended" : ""}" title="${esc(title)}">
       ${status === "blank" ? "" : renderStatusMark(status)}
     </span>
+  `;
+  if (member.id !== state.user.id) return dot;
+  return `
+    <button class="upset-dot-button" data-action="open-status" data-content-id="${esc(content.id)}" title="내 상태 변경">
+      ${dot}
+    </button>
   `;
 }
 

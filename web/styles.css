@@ -619,7 +619,22 @@ button {
   background: #111;
 }
 
-.upset-dot {
+.upset-dot-button {
+  position: relative;
+  z-index: 1;
+  width: min(26px, calc(var(--upset-cell) - 6px));
+  height: min(26px, calc(var(--upset-cell) - 6px));
+  padding: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.upset-dot-button:active {
+  transform: translateY(1px);
+}
+
+.upset-dot-inner {
   position: relative;
   z-index: 1;
   width: min(26px, calc(var(--upset-cell) - 6px));
@@ -631,30 +646,30 @@ button {
   background: #fff;
 }
 
-.upset-dot.recommended {
+.upset-dot-inner.recommended {
   border-color: var(--recommend);
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.58),
     0 0 0 1px rgba(95, 111, 63, 0.34);
 }
 
-.upset-dot.status-watched {
+.upset-dot-inner.status-watched {
   background: var(--status-watched) !important;
 }
 
-.upset-dot.status-watching {
+.upset-dot-inner.status-watching {
   background: var(--status-watching) !important;
 }
 
-.upset-dot.status-blank {
+.upset-dot-inner.status-blank {
   background: #fff !important;
 }
 
-.upset-dot.status-dislike {
+.upset-dot-inner.status-dislike {
   background: var(--status-watched) !important;
 }
 
-.upset-dot .status-icon {
+.upset-dot-inner .status-icon {
   width: 17px;
   height: 17px;
 }
