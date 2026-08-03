@@ -391,33 +391,6 @@ class OtakuHandler(SimpleHTTPRequestHandler):
                 data["contents"].pop(content_id, None)
             return self.group_detail(data, user, group_id)
 
-        if path == "/api/notify":
-            group_id = payload.get("groupId", "")
-            content_id = payload.get("contentId", "")
-            target_id = payload.get("targetUserId", "")
-            group = data["groups"].get(group_id)
-            content = data["contents"].get(content_id)
-            target = data["users"].get(target_id)
-            if not group or not content or not target or user["id"] not in group["members"] or target_id not in group["members"]:
-                raise ValueError("이 알림을 보낼 수 없어요.")
-            data["notifications"].append({
-                "id": make_id("ntf"),
-                "to": target_id,
-                "from": user["id"],
-                "groupId": group_id,
-                "contentId": content_id,
-                "message": f"{user['nickname']}님: {content['title']} 이거 봐야 해!",
-                "createdAt": now_ms(),
-                "read": False,
-            })
-            return {"ok": True, "state": self.app_state(data, user)}
-
-        if path == "/api/notifications/read":
-            for note in data["notifications"]:
-                if note["to"] == user["id"]:
-                    note["read"] = True
-            return self.app_state(data, user)
-
         if path == "/api/group/detail":
             return self.group_detail(data, user, payload.get("groupId", ""))
 
@@ -429,15 +402,11 @@ class OtakuHandler(SimpleHTTPRequestHandler):
             [{"id": c["id"], "title": c["title"], "createdBy": c["createdBy"]} for c in data["contents"].values()],
             key=lambda c: c["title"].casefold(),
         )
-        notifications = [
-            n for n in data["notifications"]
-            if n["to"] == user["id"] and not n.get("read")
-        ]
         return {
             "user": public_user(user),
             "groups": groups,
             "contents": all_contents,
-            "notifications": notifications,
+            "notifications": [],
         }
 
     def group_detail(self, data, user, group_id):

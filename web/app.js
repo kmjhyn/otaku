@@ -95,7 +95,6 @@ function render() {
       </header>
       <main class="page">
         ${renderMessages()}
-        ${renderNotifications()}
         ${state.view === "group" ? renderGroup() : renderHome()}
       </main>
       ${renderModal()}
@@ -150,21 +149,6 @@ function renderMessages() {
   return `
     ${state.error ? `<div class="error">${esc(state.error)}</div>` : ""}
     ${state.notice ? `<div class="notice">${esc(state.notice)}</div>` : ""}
-  `;
-}
-
-function renderNotifications() {
-  const notes = state.app?.notifications || [];
-  if (!notes.length) return "";
-  return `
-    <div class="notification-stack">
-      ${notes.map((note) => `
-        <div class="notification">
-          <span>${esc(note.message)}</span>
-          <button class="link-button" data-action="clear-notes">확인</button>
-        </div>
-      `).join("")}
-    </div>
   `;
 }
 
@@ -311,7 +295,7 @@ function renderUpsetRow(content, members) {
     .filter((index) => index >= 0);
   return `
     <div class="upset-row" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
-      <button class="upset-title ${content.suggestionCount ? "suggested" : ""}" data-action="content-detail" data-content-id="${esc(content.id)}">
+      <button class="upset-title" data-action="content-detail" data-content-id="${esc(content.id)}">
         <span>${esc(content.shortTitle)}</span>
         <strong>${ranks.watched}</strong>
       </button>
@@ -357,19 +341,26 @@ function renderContentRow(content) {
 function renderStatusCell(content, member) {
   const status = content.statuses[member.id] || "blank";
   const mark = renderStatusMark(status);
+  const recommendMark = renderRecommendationMark(content, member);
   if (member.id !== state.user.id) {
-    return `<td class="status-${esc(status)}"><span class="cell-status">${mark}</span></td>`;
+    return `<td class="status-${esc(status)} status-cell-wrap"><span class="cell-status">${mark}</span>${recommendMark}</td>`;
   }
   return `
     <td
-      class="editable-status-cell current-user-cell status-${esc(status)}"
+      class="editable-status-cell current-user-cell status-${esc(status)} status-cell-wrap"
       data-action="open-status"
       data-content-id="${esc(content.id)}"
       title="내 상태 변경"
     >
       <span class="cell-status">${mark}</span>
+      ${recommendMark}
     </td>
   `;
+}
+
+function renderRecommendationMark(content, member) {
+  if (content.suggestions?.[member.id] !== "yes") return "";
+  return `<span class="recommend-mark" title="${esc(member.nickname)}님이 추천">👍</span>`;
 }
 
 function statusAsset(status, tone = "black") {
@@ -536,7 +527,6 @@ function bindSuggestionActions(root = document) {
 }
 
 function renderDetailModal(content) {
-  const blankUsers = state.groupDetail.members.filter((member) => (content.statuses[member.id] || "blank") === "blank");
   const mySuggestion = content.suggestions?.[state.user.id] || "";
   const memos = content.memos || [];
   const myMemo = memos.find((memo) => memo.userId === state.user.id);
@@ -568,16 +558,6 @@ function renderDetailModal(content) {
               <button class="${mySuggestion === "no" ? "active" : ""}" data-action="save-suggestion" data-suggestion="no">NO</button>
             </div>
           </div>
-          ${blankUsers.length ? `
-            <div class="nudge-block">
-              <p>누구에게 징기스칸 하시겠습니까?</p>
-              <div class="nudge-grid">
-                ${blankUsers.map((member) => `
-                  <button class="button danger" data-action="notify" data-content-id="${esc(content.id)}" data-user-id="${esc(member.id)}">${esc(member.nickname)}</button>
-                `).join("")}
-              </div>
-            </div>
-          ` : ""}
           <section class="memo-section">
             <div class="memo-head">
               <h3>한마디</h3>
@@ -895,24 +875,6 @@ async function handleAction(event) {
     } catch (error) {
       setError(error.message);
     }
-  }
-  if (action === "notify") {
-    try {
-      await api("/api/notify", {
-        groupId: state.groupDetail.group.id,
-        contentId: target.dataset.contentId,
-        targetUserId: target.dataset.userId,
-      });
-      state.modal = null;
-      await openGroup(state.groupDetail.group.id, false);
-      setNotice("알림을 보냈어요.");
-    } catch (error) {
-      setError(error.message);
-    }
-  }
-  if (action === "clear-notes") {
-    state.app = await api("/api/notifications/read");
-    render();
   }
 }
 

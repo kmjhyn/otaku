@@ -565,10 +565,6 @@ button {
   font-weight: 900;
 }
 
-.upset-title.suggested {
-  box-shadow: inset 4px 0 0 #111;
-}
-
 .upset-title span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -636,6 +632,27 @@ button {
   padding: 18px;
   color: var(--muted);
   font-weight: 900;
+}
+
+.status-cell-wrap {
+  position: relative;
+}
+
+.recommend-mark {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 2;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #111;
+  border-radius: 50%;
+  background: #8dbb7a;
+  color: #111;
+  font-size: 9px;
+  line-height: 1;
 }
 
 .sheet-wrap {
