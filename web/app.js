@@ -14,7 +14,7 @@ let state = {
   activeGroup: null,
   groupDetail: null,
   tab: 0,
-  groupView: "list",
+  groupView: "upset",
   modal: null,
   error: "",
   notice: "",
@@ -277,7 +277,10 @@ function renderUpsetView(contents, members) {
 }
 
 function sortUpsetRows(contents, members) {
-  return [0, 1, 2].flatMap((tab) => filteredRows(contents, members, tab));
+  return [0, 1, 2].flatMap((tab) => filteredRows(contents, members, tab).map((content, index) => ({
+    ...content,
+    upsetSectionStart: tab > 0 && index === 0,
+  })));
 }
 
 function renderUpsetRow(content, members) {
@@ -286,7 +289,7 @@ function renderUpsetRow(content, members) {
     .map((member, index) => isWatchedLike(content.statuses[member.id] || "blank") ? index : -1)
     .filter((index) => index >= 0);
   return `
-    <div class="upset-row" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
+    <div class="upset-row ${content.upsetSectionStart ? "upset-section-start" : ""}" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
       <button class="upset-title" data-action="content-detail" data-content-id="${esc(content.id)}">
         <span>${esc(content.shortTitle)}</span>
         <strong>${ranks.watchedLike}</strong>
@@ -700,13 +703,13 @@ async function handleAction(event) {
   const action = target.dataset.action;
   if (action === "logout") {
     localStorage.removeItem("otakuUser");
-    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", modal: null };
+    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "upset", modal: null };
     render();
   }
   if (action === "home") {
     state.view = "home";
     state.groupDetail = null;
-    state.groupView = "list";
+    state.groupView = "upset";
     render();
   }
   if (action === "open-add") {

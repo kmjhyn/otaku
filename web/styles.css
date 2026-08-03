@@ -559,6 +559,10 @@ button {
   border-bottom: 0;
 }
 
+.upset-section-start {
+  border-top: 4px solid var(--line);
+}
+
 .upset-title {
   min-width: 0;
   min-height: 42px;
