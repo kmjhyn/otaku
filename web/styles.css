@@ -473,9 +473,10 @@ button {
 }
 
 .upset-panel {
+  --upset-cell: clamp(28px, 8vw, 34px);
   display: grid;
   gap: 10px;
-  overflow: auto;
+  overflow: hidden;
   border: 2px solid var(--line);
   border-radius: 3px;
   padding: 10px;
@@ -487,7 +488,8 @@ button {
 .upset-row {
   display: grid;
   align-items: center;
-  min-width: max-content;
+  min-width: 0;
+  width: 100%;
 }
 
 .upset-summary {
@@ -514,6 +516,8 @@ button {
 
 .upset-table {
   display: grid;
+  min-width: 0;
+  width: 100%;
   border: 2px solid var(--line);
   background: #fff;
 }
@@ -531,7 +535,11 @@ button {
 }
 
 .upset-head span {
+  min-width: 0;
   padding: 0 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .upset-head strong {
@@ -580,7 +588,7 @@ button {
 .upset-matrix {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--member-count), 34px);
+  grid-template-columns: repeat(var(--member-count), var(--upset-cell));
   grid-row: 1;
   align-items: center;
   justify-items: center;
@@ -588,9 +596,11 @@ button {
 }
 
 .upset-link {
-  position: absolute;
-  left: calc(var(--line-start) * 34px + 17px);
-  width: 34px;
+  z-index: 0;
+  grid-column: var(--line-column) / span 2;
+  grid-row: 1;
+  justify-self: center;
+  width: calc(100% - var(--upset-cell));
   height: 2px;
   background: #111;
 }
@@ -598,8 +608,8 @@ button {
 .upset-dot {
   position: relative;
   z-index: 1;
-  width: 26px;
-  height: 26px;
+  width: min(26px, calc(var(--upset-cell) - 6px));
+  height: min(26px, calc(var(--upset-cell) - 6px));
   display: grid;
   place-items: center;
   border: 2px solid var(--line);

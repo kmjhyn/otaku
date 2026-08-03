@@ -257,7 +257,7 @@ function renderUpsetView(contents, members) {
   const maxMemberCount = Math.max(1, ...memberCounts);
   return `
     <section class="upset-panel">
-      <div class="upset-summary" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+      <div class="upset-summary" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
         <span></span>
         ${members.map((member, index) => `
           <div class="upset-member-summary" title="${esc(member.nickname)} ${memberCounts[index]}개 봄">
@@ -266,8 +266,8 @@ function renderUpsetView(contents, members) {
           </div>
         `).join("")}
       </div>
-      <div class="upset-table" style="min-width:${260 + members.length * 34}px">
-        <div class="upset-head" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+      <div class="upset-table">
+        <div class="upset-head" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
           <span>콘텐츠</span>
           ${members.map((member) => `<strong title="${esc(member.nickname)}">${esc(member.nickname.slice(0, 2))}</strong>`).join("")}
         </div>
@@ -294,7 +294,7 @@ function renderUpsetRow(content, members) {
     .map((member, index) => (content.statuses[member.id] || "blank") === "watched" ? index : -1)
     .filter((index) => index >= 0);
   return `
-    <div class="upset-row" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+    <div class="upset-row" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
       <button class="upset-title" data-action="content-detail" data-content-id="${esc(content.id)}">
         <span>${esc(content.shortTitle)}</span>
         <strong>${ranks.watched}</strong>
@@ -314,7 +314,7 @@ function renderUpsetLinks(watchedIndexes) {
   return watchedIndexes
     .slice(0, -1)
     .filter((index, itemIndex) => watchedIndexes[itemIndex + 1] === index + 1)
-    .map((index) => `<span class="upset-link" style="--line-start:${index};"></span>`)
+    .map((index) => `<span class="upset-link" style="--line-column:${index + 1};"></span>`)
     .join("");
 }
 
