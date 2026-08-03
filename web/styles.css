@@ -630,6 +630,13 @@ button {
   background: #fff;
 }
 
+.upset-dot.recommended {
+  border-color: #b88919;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 245, 190, 0.95),
+    0 0 0 1px rgba(255, 222, 118, 0.42);
+}
+
 .upset-dot.status-watched {
   background: var(--status-watched) !important;
 }

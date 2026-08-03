@@ -299,7 +299,7 @@ function renderUpsetRow(content, members) {
         style="grid-column: 2 / span ${members.length}; --member-count:${members.length};"
       >
         <span class="upset-links" aria-hidden="true">${renderUpsetLinks(watchedIndexes)}</span>
-        ${members.map((member) => renderUpsetStatus(content.statuses[member.id] || "blank")).join("")}
+        ${members.map((member) => renderUpsetStatus(content.statuses[member.id] || "blank", content.suggestions?.[member.id] === "yes", member)).join("")}
       </div>
     </div>
   `;
@@ -313,9 +313,10 @@ function renderUpsetLinks(watchedIndexes) {
     .join("");
 }
 
-function renderUpsetStatus(status) {
+function renderUpsetStatus(status, isRecommended, member) {
+  const title = isRecommended ? `${member.nickname}님이 추천` : statusLabel(status);
   return `
-    <span class="upset-dot status-${esc(status)}">
+    <span class="upset-dot status-${esc(status)} ${isRecommended ? "recommended" : ""}" title="${esc(title)}">
       ${status === "blank" ? "" : renderStatusMark(status)}
     </span>
   `;
