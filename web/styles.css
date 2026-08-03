@@ -805,25 +805,19 @@ button {
   font-weight: 800;
 }
 
-.segmented {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.segmented button {
+.conquer-mini {
   min-height: 34px;
   border-radius: 3px;
-  padding: 0 10px;
+  padding: 0 12px;
   background: #f8f8f4;
   color: var(--ink);
   font-weight: 900;
+  border: 2px solid var(--line);
 }
 
-.segmented button.active {
-  background: #1f7a34;
-  border-color: #1f7a34;
+.conquer-mini.active {
+  background: #111;
+  border-color: #111;
   color: #fff;
 }
 

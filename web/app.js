@@ -557,10 +557,9 @@ function renderDetailModal(content) {
           </div>
           <div class="conquer-row">
             <span>징기스칸 하시겠습니까?</span>
-            <div class="segmented">
-              <button class="${mySuggestion === "yes" ? "active" : ""}" data-action="save-suggestion" data-suggestion="yes">YES</button>
-              <button class="${mySuggestion === "no" ? "active" : ""}" data-action="save-suggestion" data-suggestion="no">NO</button>
-            </div>
+            <button class="conquer-mini ${mySuggestion === "yes" ? "active" : ""}" data-action="save-suggestion">
+              ${mySuggestion === "yes" ? "추천 중" : "추천하기"}
+            </button>
           </div>
           <section class="memo-section">
             <div class="memo-head">
@@ -816,7 +815,7 @@ async function handleAction(event) {
   if (action === "save-suggestion") {
     try {
       const contentId = state.modal.content.id;
-      const nextSuggestion = state.modal.content.suggestions?.[state.user.id] === target.dataset.suggestion ? "" : target.dataset.suggestion;
+      const nextSuggestion = state.modal.content.suggestions?.[state.user.id] === "yes" ? "" : "yes";
       await api("/api/content/update-suggestion", {
         groupId: state.groupDetail.group.id,
         contentId,
