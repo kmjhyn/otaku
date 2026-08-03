@@ -15,8 +15,6 @@ let state = {
   groupDetail: null,
   tab: 0,
   groupView: "list",
-  activeVennMemberId: "",
-  expandedVennGroups: {},
   modal: null,
   error: "",
   notice: "",
@@ -208,18 +206,18 @@ function renderGroup() {
   if (!state.groupDetail) return `<div class="empty-state">그룹을 불러오는 중...</div>`;
   const tabNames = ["점령성공!", "다음 점령지", "신대륙"];
   const rows = filteredRows(state.groupDetail.contents, state.groupDetail.members, state.tab);
-  const isVenn = state.groupView === "venn";
+  const isUpset = state.groupView === "upset";
   return `
     <div class="toolbar">
       <div>
         <h2 class="brand-title">${esc(state.groupDetail.group.name)}</h2>
         <p class="brand-subtitle">공유 코드 ${esc(state.groupDetail.group.code)}</p>
       </div>
-      <button class="button secondary view-toggle" data-action="toggle-group-view" title="${isVenn ? "리스트 보기" : "밴다이어그램 보기"}">
-        ${isVenn ? renderListIcon() : renderVennIcon(state.groupDetail.members.length)}
+      <button class="button secondary view-toggle" data-action="toggle-group-view" title="${isUpset ? "리스트 보기" : "교집합 보기"}">
+        ${isUpset ? renderListIcon() : renderUpsetIcon()}
       </button>
     </div>
-    ${isVenn ? renderVennView(state.groupDetail.contents, state.groupDetail.members) : `
+    ${isUpset ? renderUpsetView(state.groupDetail.contents, state.groupDetail.members) : `
       <div class="sheet-tabs">
         ${tabNames.map((name, index) => `
           <button class="${state.tab === index ? "active" : ""}" data-action="tab" data-tab="${index}">${name}</button>
@@ -252,23 +250,12 @@ function renderGroup() {
   `;
 }
 
-function renderVennIcon(count) {
-  const circleCount = Math.max(1, Math.min(count || 3, 5));
+function renderUpsetIcon() {
   return `
-    <span class="venn-icon" aria-hidden="true">
-      ${Array.from({ length: circleCount }, (_, index) => `<span style="${vennIconCircleStyle(index, circleCount)}"></span>`).join("")}
+    <span class="upset-icon" aria-hidden="true">
+      <span></span><span></span><span></span>
     </span>
   `;
-}
-
-function vennIconCircleStyle(index, count) {
-  const centerX = 14;
-  const centerY = 14;
-  const radius = count <= 3 ? 6 : 8;
-  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
-  const x = centerX + Math.cos(angle) * radius;
-  const y = centerY + Math.sin(angle) * radius;
-  return `left:${x}px;top:${y}px;`;
 }
 
 function renderListIcon() {
@@ -279,186 +266,79 @@ function renderListIcon() {
   `;
 }
 
-function renderVennView(contents, members) {
-  const model = buildVennModel(contents, members);
+function renderUpsetView(contents, members) {
   if (!members.length) return `<div class="empty-state">아직 멤버가 없어요.</div>`;
+  const rows = sortUpsetRows(contents, members);
+  const memberCounts = members.map((member) => contents.filter((content) => (content.statuses[member.id] || "blank") === "watched").length);
+  const maxMemberCount = Math.max(1, ...memberCounts);
   return `
-    <section class="venn-panel">
-      <div class="venn-stage" style="--member-count:${members.length}">
-        ${members.map((member, index) => renderVennCircle(member, index, members.length, model.watchCounts.get(member.id) || 0, model.maxWatchCount)).join("")}
-        ${renderVennCallouts(model)}
+    <section class="upset-panel">
+      <div class="upset-summary" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+        <span></span>
+        ${members.map((member, index) => `
+          <div class="upset-member-summary" title="${esc(member.nickname)} ${memberCounts[index]}개 봄">
+            <span style="height:${Math.max(8, (memberCounts[index] / maxMemberCount) * 42)}px"></span>
+            <strong>${memberCounts[index]}</strong>
+          </div>
+        `).join("")}
+      </div>
+      <div class="upset-table" style="min-width:${260 + members.length * 34}px">
+        <div class="upset-head" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+          <span>콘텐츠</span>
+          ${members.map((member) => `<strong title="${esc(member.nickname)}">${esc(member.nickname.slice(0, 2))}</strong>`).join("")}
+        </div>
+        ${rows.length ? rows.map((content) => renderUpsetRow(content, members)).join("") : `<div class="upset-empty">아직 표시할 콘텐츠가 없어요.</div>`}
       </div>
     </section>
   `;
 }
 
-function renderVennCircle(member, index, count, watchedCount, maxWatchCount) {
-  const position = vennCirclePosition(index, count);
-  const scale = maxWatchCount ? 0.72 + (watchedCount / maxWatchCount) * 0.34 : 0.78;
-  const isActive = state.activeVennMemberId === member.id;
-  const colorIndex = index % vennPalette.length;
-  return `
-    <button
-      class="venn-circle venn-color-${colorIndex} ${isActive ? "active" : ""}"
-      data-action="select-venn-member"
-      data-user-id="${esc(member.id)}"
-      style="--x:${position.x}%;--y:${position.y}%;--scale:${scale};"
-      title="${esc(member.nickname)}"
-    >
-      <span>${esc(member.nickname)}</span>
-      <strong>${watchedCount}</strong>
-    </button>
-  `;
-}
-
-const vennPalette = ["sage", "clay", "blue", "lavender", "gold"];
-
-function vennCirclePosition(index, count) {
-  if (count === 1) return { x: 50, y: 48 };
-  if (count === 2) return [{ x: 39, y: 48 }, { x: 61, y: 48 }][index];
-  if (count === 3) return [{ x: 50, y: 36 }, { x: 39, y: 58 }, { x: 61, y: 58 }][index];
-  const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
-  return {
-    x: 50 + Math.cos(angle) * 18,
-    y: 50 + Math.sin(angle) * 18,
-  };
-}
-
-function buildVennModel(contents, members) {
-  const watchCounts = new Map(members.map((member) => [member.id, 0]));
-  const groups = new Map();
-  const unwatched = [];
-
-  contents.forEach((content) => {
-    const watchedIds = members
-      .filter((member) => (content.statuses[member.id] || "blank") === "watched")
-      .map((member) => member.id);
-    watchedIds.forEach((id) => watchCounts.set(id, (watchCounts.get(id) || 0) + 1));
-    if (!watchedIds.length) {
-      unwatched.push(content);
-      return;
-    }
-    const key = watchedIds.sort().join("|");
-    groups.set(key, [...(groups.get(key) || []), content]);
-  });
-
-  groups.forEach((items, key) => groups.set(key, sortVennContents(items)));
-  return {
-    groups,
-    unwatched: sortVennContents(unwatched),
-    watchCounts,
-    maxWatchCount: Math.max(0, ...watchCounts.values()),
-  };
-}
-
-function sortVennContents(contents) {
+function sortUpsetRows(contents, members) {
   return [...contents].sort((a, b) => {
-    const suggestionDelta = Number(Boolean(b.suggestionCount)) - Number(Boolean(a.suggestionCount));
-    return suggestionDelta || a.title.localeCompare(b.title, "ko");
+    const aRank = newWorldRank(a, members);
+    const bRank = newWorldRank(b, members);
+    return bRank.watched - aRank.watched
+      || bRank.watching - aRank.watching
+      || b.suggestionCount - a.suggestionCount
+      || a.title.localeCompare(b.title, "ko");
   });
 }
 
-function renderVennCallouts(model) {
-  const members = state.groupDetail.members;
-  const selectedMemberId = state.activeVennMemberId || members[0]?.id || "";
-  const watchedCallouts = Array.from(model.groups.entries()).map(([key, items]) => {
-    const ids = key.split("|");
-    if (!ids.includes(selectedMemberId)) return "";
-    return renderVennCallout(`watched:${key}`, items, vennRegionPosition(ids, members), vennCalloutPosition(ids, members), "");
-  }).join("");
-
-  const addedUnwatched = model.unwatched.filter((content) => content.createdBy === selectedMemberId);
-  const selectedIndex = members.findIndex((member) => member.id === selectedMemberId);
-  const unwatchedCallout = addedUnwatched.length
-    ? renderVennCallout(
-      `unwatched:${selectedMemberId}`,
-      addedUnwatched,
-      unwatchedRegionPosition(selectedIndex, members.length),
-      unwatchedCalloutPosition(selectedIndex, members.length),
-      "unwatched"
-    )
-    : "";
-  return `${watchedCallouts}${unwatchedCallout}`;
-}
-
-function vennRegionPosition(ids, members) {
-  const positions = ids
-    .map((id) => members.findIndex((member) => member.id === id))
-    .filter((index) => index >= 0)
-    .map((index) => vennCirclePosition(index, members.length));
-  if (!positions.length) return { x: 50, y: 50 };
-  const average = positions.reduce((acc, item) => ({ x: acc.x + item.x, y: acc.y + item.y }), { x: 0, y: 0 });
-  return {
-    x: average.x / positions.length,
-    y: average.y / positions.length,
-  };
-}
-
-function unwatchedRegionPosition(memberIndex, count) {
-  if (count === 1) return { x: 50, y: 78 };
-  if (count === 2) return [{ x: 22, y: 50 }, { x: 78, y: 50 }][Math.max(memberIndex, 0)];
-  if (count === 3) return [{ x: 50, y: 16 }, { x: 22, y: 76 }, { x: 78, y: 76 }][Math.max(memberIndex, 0)];
-  const anchor = vennCirclePosition(Math.max(memberIndex, 0), count);
-  return {
-    x: 50 + (anchor.x - 50) * 2.12,
-    y: 50 + (anchor.y - 50) * 2.12,
-  };
-}
-
-function vennCalloutPosition(ids, members) {
-  const indexes = ids.map((id) => members.findIndex((member) => member.id === id)).filter((index) => index >= 0);
-  if (members.length === 1) return { x: 74, y: 24 };
-  if (members.length === 2) return indexes.includes(0) && indexes.includes(1) ? { x: 50, y: 18 } : unwatchedCalloutPosition(indexes[0], 2);
-  if (members.length === 3) {
-    if (indexes.length === 3) return { x: 76, y: 32 };
-    if (indexes.length === 1) return [{ x: 51, y: 13 }, { x: 19, y: 80 }, { x: 81, y: 80 }][indexes[0]];
-    if (indexes.includes(0) && indexes.includes(1)) return { x: 27, y: 34 };
-    if (indexes.includes(0) && indexes.includes(2)) return { x: 73, y: 35 };
-    return { x: 50, y: 84 };
-  }
-  const anchor = vennRegionPosition(ids, members);
-  return {
-    x: Math.max(16, Math.min(84, 50 + (anchor.x - 50) * 1.55)),
-    y: Math.max(14, Math.min(86, 50 + (anchor.y - 50) * 1.55)),
-  };
-}
-
-function unwatchedCalloutPosition(memberIndex, count) {
-  if (count === 1) return { x: 50, y: 88 };
-  if (count === 2) return [{ x: 17, y: 70 }, { x: 83, y: 70 }][Math.max(memberIndex, 0)];
-  if (count === 3) return [{ x: 50, y: 10 }, { x: 18, y: 88 }, { x: 82, y: 88 }][Math.max(memberIndex, 0)];
-  return unwatchedRegionPosition(memberIndex, count);
-}
-
-function renderVennCallout(key, items, anchor, box, variant) {
-  const expanded = Boolean(state.expandedVennGroups[key]);
-  const visible = expanded ? items : items.slice(0, Math.min(2, items.length));
-  const hiddenCount = Math.max(0, items.length - visible.length);
+function renderUpsetRow(content, members) {
+  const ranks = newWorldRank(content, members);
+  const watchedIndexes = members
+    .map((member, index) => (content.statuses[member.id] || "blank") === "watched" ? index : -1)
+    .filter((index) => index >= 0);
   return `
-    ${renderVennConnector(anchor, box)}
-    <div class="venn-callout ${variant}" style="--x:${box.x}%;--y:${box.y}%;">
-      ${visible.map((content) => renderVennChip(content)).join("")}
-      ${!expanded && hiddenCount ? `<button class="venn-more" data-action="toggle-venn-list" data-venn-key="${esc(key)}">+${hiddenCount}</button>` : ""}
-      ${expanded && items.length > 2 ? `<button class="venn-collapse" data-action="toggle-venn-list" data-venn-key="${esc(key)}">^</button>` : ""}
+    <div class="upset-row" style="grid-template-columns: 1fr repeat(${members.length}, 34px);">
+      <button class="upset-title ${content.suggestionCount ? "suggested" : ""}" data-action="content-detail" data-content-id="${esc(content.id)}">
+        <span>${esc(content.shortTitle)}</span>
+        <strong>${ranks.watched}</strong>
+      </button>
+      <div
+        class="upset-matrix"
+        style="grid-column: 2 / span ${members.length}; --member-count:${members.length};"
+      >
+        ${renderUpsetLinks(watchedIndexes)}
+        ${members.map((member) => renderUpsetStatus(content.statuses[member.id] || "blank")).join("")}
+      </div>
     </div>
   `;
 }
 
-function renderVennConnector(anchor, box) {
-  const midX = (anchor.x + box.x) / 2;
-  return `
-    <svg class="venn-connector" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M ${anchor.x} ${anchor.y} L ${midX} ${anchor.y} L ${midX} ${box.y} L ${box.x} ${box.y}"></path>
-    </svg>
-  `;
+function renderUpsetLinks(watchedIndexes) {
+  return watchedIndexes
+    .slice(0, -1)
+    .filter((index, itemIndex) => watchedIndexes[itemIndex + 1] === index + 1)
+    .map((index) => `<span class="upset-link" style="--line-start:${index};"></span>`)
+    .join("");
 }
 
-function renderVennChip(content) {
+function renderUpsetStatus(status) {
   return `
-    <button class="venn-chip ${content.suggestionCount ? "suggested" : ""}" data-action="content-detail" data-content-id="${esc(content.id)}">
-      ${content.suggestionCount ? `<span>!</span>` : ""}
-      ${esc(content.shortTitle)}
-    </button>
+    <span class="upset-dot status-${esc(status)}">
+      ${status === "blank" ? "" : renderStatusMark(status)}
+    </span>
   `;
 }
 
@@ -513,19 +393,16 @@ function renderStatusMark(status) {
 
 function filteredRows(contents, members, tab) {
   const rows = contents.filter((content) => {
-    const ranks = newWorldRank(content, members);
-    if (tab === 0) return ranks.blank === 0;
-    if (tab === 1) return ranks.watched < members.length && (content.suggestionCount > 0 || ranks.watching > 0);
-    return ranks.blank > 0 && content.suggestionCount === 0 && ranks.watching === 0;
+    return contentTab(content, members) === tab;
   });
 
   if (tab === 1) {
     return rows.sort((a, b) => {
       const aRank = newWorldRank(a, members);
       const bRank = newWorldRank(b, members);
-      return b.suggestionCount - a.suggestionCount
-        || bRank.watching - aRank.watching
+      return bRank.active - aRank.active
         || bRank.watched - aRank.watched
+        || b.suggestionCount - a.suggestionCount
         || a.title.localeCompare(b.title);
     });
   }
@@ -533,13 +410,20 @@ function filteredRows(contents, members, tab) {
     return rows.sort((a, b) => {
       const aRank = newWorldRank(a, members);
       const bRank = newWorldRank(b, members);
-      return bRank.watched - aRank.watched
-        || bRank.dislike - aRank.dislike
-        || aRank.watching - bRank.watching
+      return bRank.active - aRank.active
+        || bRank.watched - aRank.watched
+        || b.suggestionCount - a.suggestionCount
         || a.title.localeCompare(b.title);
     });
   }
-  return rows;
+  return rows.sort((a, b) => a.title.localeCompare(b.title, "ko"));
+}
+
+function contentTab(content, members) {
+  const ranks = newWorldRank(content, members);
+  if (members.length && ranks.watched === members.length) return 0;
+  if (ranks.active >= Math.ceil(members.length * 2 / 3)) return 1;
+  return 2;
 }
 
 function newWorldRank(content, members) {
@@ -549,6 +433,7 @@ function newWorldRank(content, members) {
     dislike: statuses.filter((status) => status === "dislike").length,
     watching: statuses.filter((status) => status === "watching").length,
     blank: statuses.filter((status) => status === "blank").length,
+    active: statuses.filter((status) => status === "watched" || status === "watching").length,
   };
 }
 
@@ -838,15 +723,13 @@ async function handleAction(event) {
   const action = target.dataset.action;
   if (action === "logout") {
     localStorage.removeItem("otakuUser");
-    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", activeVennMemberId: "", expandedVennGroups: {}, modal: null };
+    state = { ...state, user: null, app: null, view: "home", activeGroup: null, groupDetail: null, groupView: "list", modal: null };
     render();
   }
   if (action === "home") {
     state.view = "home";
     state.groupDetail = null;
     state.groupView = "list";
-    state.activeVennMemberId = "";
-    state.expandedVennGroups = {};
     render();
   }
   if (action === "open-add") {
@@ -890,22 +773,7 @@ async function handleAction(event) {
     render();
   }
   if (action === "toggle-group-view") {
-    state.groupView = state.groupView === "venn" ? "list" : "venn";
-    state.activeVennMemberId = state.groupDetail?.members?.[0]?.id || "";
-    state.expandedVennGroups = {};
-    render();
-  }
-  if (action === "select-venn-member") {
-    state.activeVennMemberId = target.dataset.userId;
-    state.expandedVennGroups = {};
-    render();
-  }
-  if (action === "toggle-venn-list") {
-    const key = target.dataset.vennKey;
-    state.expandedVennGroups = {
-      ...state.expandedVennGroups,
-      [key]: !state.expandedVennGroups[key],
-    };
+    state.groupView = state.groupView === "upset" ? "list" : "upset";
     render();
   }
   if (action === "content-detail") {
