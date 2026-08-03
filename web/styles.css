@@ -606,6 +606,8 @@ button {
 }
 
 .upset-link {
+  grid-row: 1;
+  align-self: center;
   justify-self: center;
   width: calc(100% - var(--upset-cell));
   height: 2px;

@@ -252,7 +252,7 @@ function renderListIcon() {
 function renderUpsetView(contents, members) {
   if (!members.length) return `<div class="empty-state">아직 멤버가 없어요.</div>`;
   const rows = sortUpsetRows(contents, members);
-  const memberCounts = members.map((member) => contents.filter((content) => (content.statuses[member.id] || "blank") === "watched").length);
+  const memberCounts = members.map((member) => contents.filter((content) => isWatchedLike(content.statuses[member.id] || "blank")).length);
   const maxMemberCount = Math.max(1, ...memberCounts);
   return `
     <section class="upset-panel">
@@ -277,26 +277,19 @@ function renderUpsetView(contents, members) {
 }
 
 function sortUpsetRows(contents, members) {
-  return [...contents].sort((a, b) => {
-    const aRank = newWorldRank(a, members);
-    const bRank = newWorldRank(b, members);
-    return bRank.active - aRank.active
-      || bRank.watched - aRank.watched
-      || b.suggestionCount - a.suggestionCount
-      || a.title.localeCompare(b.title, "ko");
-  });
+  return [...contents].sort((a, b) => compareContent(a, b, members));
 }
 
 function renderUpsetRow(content, members) {
   const ranks = newWorldRank(content, members);
   const watchedIndexes = members
-    .map((member, index) => (content.statuses[member.id] || "blank") === "watched" ? index : -1)
+    .map((member, index) => isWatchedLike(content.statuses[member.id] || "blank") ? index : -1)
     .filter((index) => index >= 0);
   return `
     <div class="upset-row" style="grid-template-columns: minmax(0, 1fr) repeat(${members.length}, var(--upset-cell));">
       <button class="upset-title" data-action="content-detail" data-content-id="${esc(content.id)}">
         <span>${esc(content.shortTitle)}</span>
-        <strong>${ranks.watched}</strong>
+        <strong>${ranks.watchedLike}</strong>
       </button>
       <div
         class="upset-matrix"
@@ -390,45 +383,54 @@ function filteredRows(contents, members, tab) {
     return contentTab(content, members) === tab;
   });
 
-  if (tab === 1) {
-    return rows.sort((a, b) => {
-      const aRank = newWorldRank(a, members);
-      const bRank = newWorldRank(b, members);
-      return bRank.active - aRank.active
-        || bRank.watched - aRank.watched
-        || b.suggestionCount - a.suggestionCount
-        || a.title.localeCompare(b.title);
-    });
-  }
-  if (tab === 2) {
-    return rows.sort((a, b) => {
-      const aRank = newWorldRank(a, members);
-      const bRank = newWorldRank(b, members);
-      return bRank.active - aRank.active
-        || bRank.watched - aRank.watched
-        || b.suggestionCount - a.suggestionCount
-        || a.title.localeCompare(b.title);
-    });
-  }
-  return rows.sort((a, b) => a.title.localeCompare(b.title, "ko"));
+  return rows.sort((a, b) => compareContent(a, b, members, tab));
 }
 
 function contentTab(content, members) {
   const ranks = newWorldRank(content, members);
-  if (members.length && ranks.watched === members.length) return 0;
+  if (members.length && ranks.watchedLike === members.length) return 0;
   if (ranks.active >= Math.ceil(members.length * 2 / 3)) return 1;
   return 2;
 }
 
 function newWorldRank(content, members) {
   const statuses = members.map((member) => content.statuses[member.id] || "blank");
+  const watched = statuses.filter((status) => status === "watched").length;
+  const dislike = statuses.filter((status) => status === "dislike").length;
+  const watching = statuses.filter((status) => status === "watching").length;
+  const watchedLike = watched + dislike;
   return {
-    watched: statuses.filter((status) => status === "watched").length,
-    dislike: statuses.filter((status) => status === "dislike").length,
-    watching: statuses.filter((status) => status === "watching").length,
+    watched,
+    dislike,
+    watching,
+    watchedLike,
     blank: statuses.filter((status) => status === "blank").length,
-    active: statuses.filter((status) => status === "watched" || status === "watching").length,
+    active: watchedLike + watching,
   };
+}
+
+function isWatchedLike(status) {
+  return status === "watched" || status === "dislike";
+}
+
+function compareContent(a, b, members, tab = null) {
+  const aTab = tab ?? contentTab(a, members);
+  const bTab = tab ?? contentTab(b, members);
+  if (aTab !== bTab) return aTab - bTab;
+
+  const aRank = newWorldRank(a, members);
+  const bRank = newWorldRank(b, members);
+  if (aTab === 2) {
+    return aRank.dislike - bRank.dislike
+      || aRank.active - bRank.active
+      || b.suggestionCount - a.suggestionCount
+      || a.title.localeCompare(b.title, "ko");
+  }
+  return bRank.active - aRank.active
+    || bRank.watchedLike - aRank.watchedLike
+    || aRank.dislike - bRank.dislike
+    || b.suggestionCount - a.suggestionCount
+    || a.title.localeCompare(b.title, "ko");
 }
 
 function decisionClass(content, members) {
