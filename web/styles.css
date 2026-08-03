@@ -544,8 +544,9 @@ button {
 .upset-head strong {
   overflow: hidden;
   text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.05;
+  white-space: normal;
 }
 
 .upset-row {
@@ -721,7 +722,9 @@ button {
   z-index: 2;
   background: #f4f6f7;
   font-size: 12px;
+  line-height: 1.05;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .sheet .content-col {
