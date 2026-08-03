@@ -648,9 +648,6 @@ button {
 
 .upset-dot-inner.recommended {
   border-color: var(--recommend);
-  box-shadow:
-    inset 1px 1px 0 rgba(255, 255, 255, 0.58),
-    0 0 0 1px rgba(95, 111, 63, 0.34);
 }
 
 .upset-dot-inner.status-watched {
