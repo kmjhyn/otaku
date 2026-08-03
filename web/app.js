@@ -18,7 +18,6 @@ let state = {
   modal: null,
   error: "",
   notice: "",
-  touchStartX: 0,
 };
 
 function esc(value) {
@@ -207,7 +206,7 @@ function renderGroup() {
           <button class="${state.tab === index ? "active" : ""}" data-action="tab" data-tab="${index}">${name}</button>
         `).join("")}
       </div>
-      <section class="swipe-region" data-action="swipe">
+      <section class="sheet-region">
         <div class="sheet-wrap">
           <table class="sheet" style="min-width: ${210 + state.groupDetail.members.length * 34}px">
             <colgroup>
@@ -677,20 +676,6 @@ function bindActions() {
         const counter = document.querySelector(".memo-editor-actions span");
         if (counter) counter.textContent = `${node.value.length}/160`;
       });
-      return;
-    }
-    if (action === "swipe") {
-      node.addEventListener("touchstart", (event) => {
-        state.touchStartX = event.touches[0].clientX;
-      }, { passive: true });
-      node.addEventListener("touchend", (event) => {
-        const endX = event.changedTouches[0].clientX;
-        const delta = endX - state.touchStartX;
-        if (Math.abs(delta) > 55) {
-          state.tab = delta < 0 ? Math.min(2, state.tab + 1) : Math.max(0, state.tab - 1);
-          render();
-        }
-      }, { passive: true });
       return;
     }
     node.addEventListener("click", handleAction);

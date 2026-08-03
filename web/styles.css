@@ -467,9 +467,8 @@ button {
   color: #fff;
 }
 
-.swipe-region {
+.sheet-region {
   overflow: hidden;
-  touch-action: pan-y;
 }
 
 .upset-panel {
