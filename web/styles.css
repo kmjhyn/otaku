@@ -643,16 +643,21 @@ button {
   top: 2px;
   right: 2px;
   z-index: 2;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   border: 1px solid #111;
   border-radius: 50%;
-  background: #8dbb7a;
-  color: #111;
-  font-size: 9px;
+  background: #2f7d3d;
   line-height: 1;
+}
+
+.recommend-mark img {
+  width: 10px;
+  height: 10px;
+  object-fit: contain;
+  transform: scaleY(-1);
 }
 
 .sheet-wrap {

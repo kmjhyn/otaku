@@ -360,7 +360,11 @@ function renderStatusCell(content, member) {
 
 function renderRecommendationMark(content, member) {
   if (content.suggestions?.[member.id] !== "yes") return "";
-  return `<span class="recommend-mark" title="${esc(member.nickname)}님이 추천">👍</span>`;
+  return `
+    <span class="recommend-mark" title="${esc(member.nickname)}님이 추천">
+      <img src="${esc(statusAsset("dislike", "white"))}" alt="추천">
+    </span>
+  `;
 }
 
 function statusAsset(status, tone = "black") {
