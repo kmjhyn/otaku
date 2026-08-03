@@ -18,6 +18,7 @@
   --status-watching: #d7d7d2;
   --status-watched: #242424;
   --status-dislike: #242424;
+  --recommend: #5f6f3f;
   --shadow: 5px 5px 0 rgba(17, 17, 17, 0.22);
 }
 
@@ -631,10 +632,10 @@ button {
 }
 
 .upset-dot.recommended {
-  border-color: #b88919;
+  border-color: var(--recommend);
   box-shadow:
-    inset 1px 1px 0 rgba(255, 245, 190, 0.95),
-    0 0 0 1px rgba(255, 222, 118, 0.42);
+    inset 1px 1px 0 rgba(255, 255, 255, 0.58),
+    0 0 0 1px rgba(95, 111, 63, 0.34);
 }
 
 .upset-dot.status-watched {
@@ -679,7 +680,7 @@ button {
   place-items: center;
   border: 1px solid #111;
   border-radius: 50%;
-  background: #2f7d3d;
+  background: var(--recommend);
   line-height: 1;
 }
 
