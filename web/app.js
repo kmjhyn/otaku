@@ -302,7 +302,7 @@ function renderUpsetRow(content, members) {
         class="upset-matrix"
         style="grid-column: 2 / span ${members.length}; --member-count:${members.length};"
       >
-        ${renderUpsetLinks(watchedIndexes)}
+        <span class="upset-links" aria-hidden="true">${renderUpsetLinks(watchedIndexes)}</span>
         ${members.map((member) => renderUpsetStatus(content.statuses[member.id] || "blank")).join("")}
       </div>
     </div>
@@ -313,7 +313,7 @@ function renderUpsetLinks(watchedIndexes) {
   return watchedIndexes
     .slice(0, -1)
     .filter((index, itemIndex) => watchedIndexes[itemIndex + 1] === index + 1)
-    .map((index) => `<span class="upset-link" style="--line-column:${index + 1};"></span>`)
+    .map((index) => `<span class="upset-link" style="grid-column:${index + 1} / span 2;"></span>`)
     .join("");
 }
 

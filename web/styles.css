@@ -594,10 +594,17 @@ button {
   min-height: 42px;
 }
 
-.upset-link {
+.upset-links {
+  position: absolute;
+  inset: 0;
   z-index: 0;
-  grid-column: var(--line-column) / span 2;
-  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--member-count), var(--upset-cell));
+  align-items: center;
+  pointer-events: none;
+}
+
+.upset-link {
   justify-self: center;
   width: calc(100% - var(--upset-cell));
   height: 2px;
@@ -698,6 +705,14 @@ button {
   padding: 3px;
   text-align: center;
   vertical-align: middle;
+}
+
+.sheet th.content-col {
+  z-index: 4;
+}
+
+.sheet td.content-col {
+  z-index: 3;
 }
 
 .sheet th {
