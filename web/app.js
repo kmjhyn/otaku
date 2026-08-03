@@ -421,16 +421,23 @@ function compareContent(a, b, members, tab = null) {
   const aRank = newWorldRank(a, members);
   const bRank = newWorldRank(b, members);
   if (aTab === 2) {
-    return aRank.dislike - bRank.dislike
-      || aRank.active - bRank.active
+    return newWorldSortBucket(aRank) - newWorldSortBucket(bRank)
       || b.suggestionCount - a.suggestionCount
       || a.title.localeCompare(b.title, "ko");
   }
   return bRank.active - aRank.active
-    || bRank.watchedLike - aRank.watchedLike
     || aRank.dislike - bRank.dislike
+    || bRank.watched - aRank.watched
+    || bRank.watching - aRank.watching
     || b.suggestionCount - a.suggestionCount
     || a.title.localeCompare(b.title, "ko");
+}
+
+function newWorldSortBucket(rank) {
+  if (rank.dislike > 0) return 3;
+  if (rank.watched > 0) return 0;
+  if (rank.watching > 0) return 1;
+  return 2;
 }
 
 function decisionClass(content, members) {
