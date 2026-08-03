@@ -277,7 +277,7 @@ function renderUpsetView(contents, members) {
 }
 
 function sortUpsetRows(contents, members) {
-  return [...contents].sort((a, b) => compareContent(a, b, members));
+  return [0, 1, 2].flatMap((tab) => filteredRows(contents, members, tab));
 }
 
 function renderUpsetRow(content, members) {
